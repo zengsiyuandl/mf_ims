@@ -55,9 +55,3 @@ then
     echo "app_data is already running. Stopping it..."
     pkill -f "$TARGET_DIR/app_data"
 fi
-
-# 使用 nohup 在目标目录下后台运行 app_data，并将输出重定向到 app_data.log
-cd "$TARGET_DIR"
-nohup ./app_data > app_data.log 2>&1 &
-
-echo "app_data is running in the background in $TARGET_DIR."

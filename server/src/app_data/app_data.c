@@ -8,82 +8,116 @@
  * Author: Siyuan Zeng
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <zlog.h>
+#include "app_data.h"
+#include "app_data_log.h"
+#include "app_data_socket.h"
+#include "app_data_mem.h"
 
-#define PORT 12001
+int32_t appDataEndInit(void)
+{
+    return RETURN_OK;
+}
 
-int main() {
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int opt = 1;
-    int addrlen = sizeof(address);
-    char buffer[1024] = {0};
-    char *hello = "Hello, World!";
+int32_t appDateEndStartWork(void)
+{
+    return RETURN_OK;
+}
 
-    // 初始化 zlog
-    if (zlog_init("/etc/mf_imf/services/log_app_data.conf")) {
-        fprintf(stderr, "zlog init failed\n");
-        return -1;
-    }
+AD_MODULE_MGR_S g_appDataModules[] = {
+    {"zlog",       AppDataInitZlog,     NULL,     AppDataZlogStartWork,     NULL, FALSE, FALSE},
+    {"mem",        AppDataInitMemMgr,   NULL,     AppDataMemMgrStartWork,   NULL, FALSE, FALSE},
+    {"socket",     AppDataInitSocket,   NULL,     AppDataStartSocket,       NULL, FALSE, FALSE},
 
-    zlog_category_t *c = zlog_get_category("my_cat");
-    if (!c) {
-        fprintf(stderr, "zlog get category failed\n");
-        zlog_fini();
-        return -2;
-    }
+    {"endInit",    appDataEndInit,      NULL,     appDateEndStartWork,      NULL, FALSE, FALSE} // 使用 end 标记数组结束
+};
 
-    zlog_info(c, "app_data starting...");
+int32_t appDateInit(void)
+{
+    uint32_t index = 0;
+    uint32_t modNum = ARRLEN(g_appDataModules);
+    AD_MODULE_MGR_S *modIter = NULL;
+    int32_t ret = RETURN_ERROR;
 
-    // 创建 socket 文件描述符
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        zlog_fatal(c, "socket failed");
-        exit(EXIT_FAILURE);
-    }
-
-    // 绑定 socket 到端口 12001
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        zlog_fatal(c, "setsockopt");
-        exit(EXIT_FAILURE);
-    }
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        zlog_fatal(c, "bind failed");
-        exit(EXIT_FAILURE);
-    }
-
-    if (listen(server_fd, 3) < 0) {
-        zlog_fatal(c, "listen");
-        exit(EXIT_FAILURE);
-    }
-
-    zlog_info(c, "Listening on port %d...", PORT);
-
-    while(1) {
-        // 接受新的连接
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-            zlog_fatal(c, "accept");
-            continue;  // 继续监听其他连接
+    for (index = 0; index < modNum; index++) {
+        modIter = &(g_appDataModules[index]);
+        if (modIter->isInited == TRUE) {
+            continue;
         }
-        read(new_socket, buffer, 1024);
-        zlog_info(c, "Received message: %s", buffer);
-        send(new_socket, hello, strlen(hello), 0);
-        zlog_info(c, "Hello message sent");
-        close(new_socket);
+        if (modIter->modInit == NULL) {
+            AD_LOG_WARNING("module num: %d doesn't have a init function.", index);
+            continue;
+        } else {
+            AD_LOG_INFO("module: %s starts initing.", modIter->moduleName);
+            ret = modIter->modInit();
+            if (ret != RETURN_OK) {
+                if (modIter->modExit != NULL) {
+                    modIter->modExit();
+                    modIter->isInited = FALSE;
+                }
+                AD_LOG_ERROR("module: %s inited failed.", modIter->moduleName);
+                return RETURN_ERROR;
+            }
+            modIter->isInited = TRUE;
+            AD_LOG_INFO("module: %s inited success.", modIter->moduleName);
+        }
+    }
+    
+    return RETURN_OK;
+}
+
+int32_t appDateStartWork(void)
+{
+    uint32_t index = 0;
+    uint32_t modNum = ARRLEN(g_appDataModules);
+    AD_MODULE_MGR_S *modIter = NULL;
+    int32_t ret = RETURN_ERROR;
+
+    for (index = 0; index < modNum; index++) {
+        modIter = &(g_appDataModules[index]);
+        if (modIter->isStarted == TRUE) {
+            continue;
+        }
+        if (modIter->modStartWork == NULL || modIter->moduleName == NULL) {
+            AD_LOG_WARNING("module num: %d doesn't have a startwork function.", index);
+            continue;
+        } else {
+            AD_LOG_INFO("module: %s is startworking.", modIter->moduleName);
+            ret = modIter->modStartWork();
+            if (ret != RETURN_OK) {
+                if (modIter->modStopWork != NULL) {
+                    modIter->modStopWork();
+                    modIter->isStarted = FALSE;
+                }
+                AD_LOG_ERROR("module: %s startwork failed.", modIter->moduleName);
+                return RETURN_ERROR;
+            }
+            modIter->isStarted = TRUE;
+            AD_LOG_INFO("module: %s startwork success.", modIter->moduleName);
+        }
     }
 
-    // 关闭 socket，清理 zlog（理论上不会执行到这里）
-    close(server_fd);
-    zlog_fini();
+    return RETURN_OK;
+}
 
-    return 0;
+int32_t main()
+{
+
+    int32_t ret = RETURN_ERROR;
+
+    do {
+        ret = appDateInit();
+        if (ret != RETURN_OK) {
+            AD_LOG_FATAL("APP DATA INIT FAILED. EXIT.");
+            break;
+        }
+
+        ret = appDateStartWork();
+        if (ret != RETURN_OK) {
+            AD_LOG_FATAL("APP DATA STARTWORK FAILED. EXIT.");
+            break;
+        }
+        SEC_SLEEP(3);
+    } while (TRUE);
+
+    return RETURN_ERROR;
 }

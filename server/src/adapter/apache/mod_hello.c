@@ -8,13 +8,19 @@
  * Author: Siyuan Zeng
  */
 
+#ifdef __WIN32__
+#include <winsock2.h>
+#include <Ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#endif
+
 #include "httpd.h"
 #include "http_config.h"
 #include "http_protocol.h"
 #include "ap_config.h"
 #include "http_log.h" // 包含日志相关的头文件
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
@@ -68,7 +74,7 @@ static int send_to_app_data(const char *data, char *response, int response_size,
     // 发送数据
     ret = write(server_socket, data, strlen(data));
     if (ret < 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_ERROR, 0, r, "mod_hello: write date failed. error: %d", errno);
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "mod_hello: write date failed. error: %d", errno);
     }
 
     ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "mod_hello: sending request to app_data success.");
@@ -76,7 +82,7 @@ static int send_to_app_data(const char *data, char *response, int response_size,
     // 接收响应
     ret = read(server_socket, response, response_size);
     if (ret < 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_ERROR, 0, r, "mod_hello: read date failed. error: %d", errno);
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "mod_hello: read date failed. error: %d", errno);
     }
 
     ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "mod_hello: receiving app_data response success.");
