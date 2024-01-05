@@ -9,6 +9,7 @@
  */
 
 #include "../mkf_infrastructure.h"
+#include <uv.h>
 
 // socket编程相关头文件，由于不需兼容windows，该宏隔离只是为了解决在windows上使用vscode编码时的报错提示。（看着很糟心。）
 #ifdef __WIN32__
@@ -31,6 +32,8 @@ typedef int socklen_t;
 
 // apache连接app_data使用的端口
 #define APACHE_CONNECTION_PORT 12001
+#define UV_MAX_QUEUE_NUM 128
+#define UV_DEFAULT_LISTEN_ADDR "127.0.0.1"
 
 int32_t AppDataInitSocket(void);
 int32_t AppDataStartSocket(void);
