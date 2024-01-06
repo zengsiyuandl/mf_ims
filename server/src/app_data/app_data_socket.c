@@ -27,7 +27,7 @@ int32_t AppDataStartSocket(void)
 
 void appDataUvWriteCb(uv_write_t *req, int status) {
     if (status) {
-        fprintf(stderr, "Write error %s\n", uv_strerror(status));
+        AD_LOG_ERROR("Write error %s\n", uv_strerror(status));
     }
     free(req);
 }
@@ -36,12 +36,13 @@ void appDataUvReadCb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
     if (nread > 0) {
         uv_write_t *req = (uv_write_t *) malloc(sizeof(uv_write_t));
         uv_buf_t wrbuf = uv_buf_init(buf->base, nread);
+        AD_LOG_INFO("Received a request.");
         uv_write(req, client, &wrbuf, 1, appDataUvWriteCb);
         return;
     }
     if (nread < 0) {
         if (nread != UV_EOF)
-            AD_LOG_ERROR(stderr, "Read error %s\n", uv_err_name(nread));
+            AD_LOG_ERROR("Read error %s\n", uv_err_name(nread));
         uv_close((uv_stream_t*)client, NULL);
     }
 
@@ -69,8 +70,9 @@ void appDataUvOnNewConnCb(uv_stream_t *server, int status) {
     }
 }
 
-int32_t AppDataInitSocket(void)
+void *appDataStartSocketListen(void *buff)
 {
+    UNREFERENCE_PARAM(buff);
     uv_loop_t *loop = uv_default_loop();
 
     uv_tcp_t server;
@@ -79,12 +81,27 @@ int32_t AppDataInitSocket(void)
     struct sockaddr_in bind_addr;
     uv_ip4_addr(UV_DEFAULT_LISTEN_ADDR, APACHE_CONNECTION_PORT, &bind_addr);
     uv_tcp_bind(&server, (const struct sockaddr *)&bind_addr, 0);
-    int r = uv_listen((uv_stream_t*)&server, UV_MAX_QUEUE_NUM, appDataUvOnNewConnCb);
-
-    if (r) {
-        AD_LOG_ERROR("Listen error %s\n", uv_strerror(r));
+    int32_t ret = uv_listen((uv_stream_t*)&server, UV_MAX_QUEUE_NUM, appDataUvOnNewConnCb);
+    if (ret != RETURN_OK) {
+        AD_LOG_ERROR("Listen error %s\n", uv_strerror(ret));
         return 1;
     }
 
-    return uv_run(loop, UV_RUN_DEFAULT);
+    ret = uv_run(loop, UV_RUN_DEFAULT);
+    if (ret != RETURN_ERROR) {
+        AD_LOG_ERROR("uv run error. ret: %d", ret);
+    }
+
+    return NULL;
+}
+
+int32_t AppDataInitSocket(void)
+{
+    int32_t ret = RETURN_ERROR;
+
+    ret = AppDataSwitchThread(NULL, appDataStartSocketListen);
+    if (ret != RETURN_OK) {
+        AD_LOG_ERROR("Switch thread failed. ret: %d", ret);
+    }
+    return ret;
 }
