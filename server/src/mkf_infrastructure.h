@@ -47,7 +47,7 @@
     nanosleep(&ts, NULL); \
 } while(0)
 
-#define UNREFERENCED_PARAM(x) (void)(x)
+#define UNREFERENCE_PARAM(x) (void)(x)
 
 int32_t strncpy_s(char *dest, size_t destsz, const char *src, size_t count);
 int32_t memset_s(void *v, size_t n, int c, size_t destsz);

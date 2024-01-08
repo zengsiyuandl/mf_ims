@@ -22,7 +22,7 @@ typedef struct tagAD_PARTITION_MGR_S {
 } AD_PARTITION_MGR_S;
 
 typedef enum tagAD_PARTITION_ID_E {
-    AD_PARTITION_ID_SOCKE_ADDR = 0,
+    AD_PARTITION_ID_PUBLIC = 0,
 
     AD_PARTITION_ID_BUTT
 } AD_PARTITION_ID_E;
@@ -33,6 +33,15 @@ int32_t AppDataMemMgrStartWork(void);
 int32_t AppDataResMemPartition(uint32_t partId, uint32_t objSize, uint32_t objNum);
 void *AppDataAllocMem(uint32_t partId, uint32_t objNum);
 void AppDataFreeMem(uint32_t partId, uint32_t objNum, void *buffStart);
+
+#define AD_PUB_MALLOC(ptr, memSize) do { \
+    void *buff = (void *)(ptr); \
+    buff = malloc((memSize)); \
+} while(0)
+
+#define AD_PUB_FREE(ptr) do { \
+    free((ptr)); \
+} while(0)
 
 #define AD_ALLOC_MEM(partId) do { \
     AppDataAllocMem(partId, 1); \

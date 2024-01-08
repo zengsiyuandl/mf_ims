@@ -1,0 +1,28 @@
+{
+    "files.associations": {
+        "app_data.h": "c",
+        "winsock2.h": "c",
+        "unistd.h": "c",
+        "stdio.h": "c",
+        "stdlib.h": "c",
+        "string.h": "c",
+        "compare": "c",
+        "cmath": "cpp",
+        "mkf_infrastructure.h": "c",
+        "zlog.h": "c",
+        "app_data_log.h": "c",
+        "typeinfo": "c",
+        "app_data_mem.h": "c",
+        "app_data_socket.h": "c",
+        "uv.h": "c",
+        "ap_config.h": "c",
+        "http_protocol.h": "c",
+        "apr_portable.h": "c",
+        "apr_mmap.h": "c",
+        "apr.h": "c",
+        "apr_buckets.h": "c",
+        "util_filter.h": "c",
+        "httpd.h": "c",
+        "errno.h": "c"
+    }
+}
