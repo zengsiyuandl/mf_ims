@@ -20,19 +20,38 @@
 #include "http_config.h"
 #include "http_protocol.h"
 #include "ap_config.h"
+#include "apr_strings.h"
+#include "apr_json.h" // 注意: 确保Apache版本支持此库
 #include "http_log.h" // 包含日志相关的头文件
-#include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
 
 #define SERVER_PORT 12001
+#define APACHE_MAX_SEND_BUF 1024
+#define APACHE_MAX_RECEIVE_BUF 8192
+#define APACHE_SOCKET_STATE_UNINITIALIZED -1
 
-static int server_socket = -1; // 全局变量用于维护与 app_data 的连接
+static int server_socket = APACHE_SOCKET_STATE_UNINITIALIZED; // 全局变量用于维护与 app_data 的连接
+
+typedef enum tagAD_HTTP_METHOD_E {
+    AD_HTTP_METHOD_GET = 0,
+    AD_HTTP_METHOD_PUT,
+    AD_HTTP_METHOD_POST,
+    AD_HTTP_METHOD_DELETE,
+
+    AD_HTTP_METHOD_BUTT
+} AD_HTTP_METHOD_E;
+
+typedef struct tagAD_SOCKET_BUF_S {
+    uint8_t httpMethod;
+
+} AD_SOCKET_BUF_S;
 
 static void close_connection() {
-    if (server_socket != -1) {
+    if (server_socket != APACHE_SOCKET_STATE_UNINITIALIZED) {
         close(server_socket);
-        server_socket = -1;
+        server_socket = APACHE_SOCKET_STATE_UNINITIALIZED;
     }
 }
 
@@ -90,33 +109,115 @@ static int send_to_app_data(const char *data, char *response, int response_size,
     return 0;
 }
 
-static int hello_handler(request_rec *r) {
-    int ret = -1;
-    char response[1024] = {0};
+int32_t apacheParseReqData(apr_bucket_brigade* bb, char *buf, apr_size_t *total_read)
+{
+    for (apr_bucket* b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
+        if (APR_BUCKET_IS_EOS(b)) {
+            break;
+        }
 
-    if (!r->handler || strcmp(r->handler, "hello_handler")) {
+        const char* data;
+        apr_size_t data_len;
+        apr_bucket_read(b, &data, &data_len, APR_BLOCK_READ);
+        if (*total_read + data_len > APACHE_MAX_RECEIVE_BUF) {
+            return HTTP_REQUEST_ENTITY_TOO_LARGE;
+        }
+        memcpy(buf + *total_read, data, data_len);
+        *total_read += data_len;
+    }
+    buf[*total_read] = '\0'; // 确保字符串结束
+
+    return OK;
+}
+
+int32_t apacheParseReqToAppData(request_rec *req)
+{
+    // 读取请求体
+    int readBytes;
+    char buf[APACHE_MAX_RECEIVE_BUF]; // 适当大小的缓冲区
+    apr_size_t len = sizeof(buf);
+    apr_status_t rv;
+    apr_bucket_brigade* bb = apr_brigade_create(req->pool, req->connection->bucket_alloc);
+    rv = ap_get_brigade(req->input_filters, bb, AP_MODE_READBYTES, APR_BLOCK_READ, len);
+
+    if (rv != APR_SUCCESS) {
+        return HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    // 组装请求体字符串
+    apr_size_t total_read = 0;
+    int32_t ret = apacheParseReqData(bb, buf, &total_read);
+    if (ret != OK) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, req, "Request body too large");
+        return HTTP_REQUEST_ENTITY_TOO_LARGE;
+    }
+
+    // 解析JSON
+    apr_json_value_t *json_req = NULL;
+    int32_t json_error;
+    json_req = apr_json_parse(req->pool, buf, &total_read, &json_error);
+    if (!json_req) {
+        // 解析错误
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, req, "Error parsing JSON request body");
+        return HTTP_BAD_REQUEST;
+    }
+
+    // 提取JSON中的字段
+    const char *username_key = "username";
+    const char *password_key = "password";
+    const char *confirm_key = "confirmedPassword";
+
+    apr_json_value_t *username_val = apr_json_object_get(json_req, username_key, strlen(username_key));
+    apr_json_value_t *password_val = apr_json_object_get(json_req, password_key, strlen(password_key));
+    apr_json_value_t *confirm_val = apr_json_object_get(json_req, confirm_key, strlen(confirm_key));
+
+    // 确保所有字段都存在且为字符串
+    if (!username_val || !password_val || !confirm_val ||
+        username_val->type != APR_JSON_STRING || password_val->type != APR_JSON_STRING ||
+        confirm_val->type != APR_JSON_STRING) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, req, "Invalid JSON fields");
+        return HTTP_BAD_REQUEST;
+    }
+
+    // 执行注册逻辑...
+    // 例如，验证用户名和密码，将用户信息保存到数据库等
+
+    // 成功处理请求
+    return OK;
+}
+
+static int hello_handler(request_rec *req) {
+    int ret = -1;
+    char response[APACHE_MAX_SEND_BUF] = {0};
+
+    if (!req->handler || strcmp(req->handler, "hello_handler")) {
         return DECLINED;
     }
 
-    if (server_socket == -1) {
-        // 首次建立连接
+    // 首次建立连接
+    if (server_socket == APACHE_SOCKET_STATE_UNINITIALIZED) {
         ret = connect_to_app_data();
         if (ret != 0 || server_socket < 0) {
-            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, "mod_hello: connect to app_data failed.");
+            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, req, "mod_hello: connect to app_data failed.");
             return -1;
         }
-        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
+        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, req,
             "mod_hello: connect to app_data success. socket: %d", server_socket);
     }
 
+    ret = apacheParseReqToAppData(req);
+
+    ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, req,
+            "req: ", server_socket);
+
     // 将请求数据发送到 app_data 并接收响应
-    if (send_to_app_data("Hello app_data", response, sizeof(response), r) < 0) {
+    if (send_to_app_data("Hello app_data", response, sizeof(response), req) < 0) {
         close(server_socket);
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    ap_set_content_type(r, "text/plain");
-    ap_rputs(response, r);
+    ap_set_content_type(req, "text/plain");
+    ap_rputs(response, req);
 
     return OK;
 }

@@ -1,7 +1,0 @@
-{
-    "C_Cpp.errorSquiggles": "disabled",
-    "files.associations": {
-        "unistd.h": "c"
-    },
-    "cmake.sourceDirectory": "C:/code/InventoryManagementSystem/mf_ifs/src/app_data"
-}

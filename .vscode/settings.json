@@ -23,6 +23,14 @@
         "apr_buckets.h": "c",
         "util_filter.h": "c",
         "httpd.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "ap_release.h": "c",
+        "apr_general.h": "c",
+        "ap_hooks.h": "c",
+        "apr_optional_hooks.h": "c",
+        "apr_json.h": "c",
+        "http_log.h": "c",
+        "apr_tables.h": "c",
+        "stdarg.h": "c"
     }
 }

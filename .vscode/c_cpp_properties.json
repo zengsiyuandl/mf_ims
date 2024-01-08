@@ -6,7 +6,7 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/server/src/adapter/zlog",
                 "${workspaceFolder}/server/src/thirdParty/uv",
-                "${workspaceFolder}/server/src/thirdParty/uv"
+                "${workspaceFolder}/server/src/thirdParty/apache"
             ],
             "defines": [
                 "_DEBUG",
