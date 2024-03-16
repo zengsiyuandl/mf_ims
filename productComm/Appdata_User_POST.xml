@@ -1,0 +1,63 @@
+<Objects>
+    <Object>
+        <ObjName>User</ObjName>
+        <ObjectId>1</ObjectId>
+        <ModuleId>1</ModuleId>
+        <Permissions>
+            <Permission>
+                <User>Administrator</User>
+                <ReadPermission>true</ReadPermission>
+                <WritePermission>true</WritePermission>
+            </Permission>
+        </Permissions>
+        <Params>
+            <Parameter>
+                <ParamId>1</ParamId>
+                <ParamName>UserId</ParamName>
+                <Optional>false</Optional>
+                <Type>uint</Type>
+                <Length>
+                    <Min>0</Min>
+                    <Max>4294967295</Max>
+                </Length>
+                <Description>用户ID</Description>
+            </Parameter>
+
+            <Parameter>
+                <ParamId>2</ParamId>
+                <ParamName>Username</ParamName>
+                <Optional>false</Optional>
+                <Type>string</Type>
+                <Length>
+                    <Min>6</Min>
+                    <Max>24</Max>
+                </Length>
+                <Description>用户名</Description>
+            </Parameter>
+
+            <Parameter>
+                <ParamId>3</ParamId>
+                <ParamName>Password</ParamName>
+                <Optional>false</Optional>
+                <Type>string</Type>
+                <Length>
+                    <Min>8</Min>
+                    <Max>12</Max>
+                </Length>
+                <Description>密码</Description>
+            </Parameter>
+
+            <Parameter>
+                <ParamId>4</ParamId>
+                <ParamName>UserGroup</ParamName>
+                <Optional>false</Optional>
+                <Type>uint</Type>
+                <Length>
+                    <Min>0</Min>
+                    <Max>65535</Max>
+                </Length>
+                <Description>用户组</Description>
+            </Parameter>
+        </Params>
+    </Object>
+</Objects>

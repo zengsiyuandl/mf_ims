@@ -31,6 +31,10 @@
         "apr_json.h": "c",
         "http_log.h": "c",
         "apr_tables.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "json.h": "c",
+        "json_object_iterator.h": "c",
+        "tree.h": "c",
+        "parser.h": "c"
     }
 }

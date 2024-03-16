@@ -6,7 +6,9 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/server/src/adapter/zlog",
                 "${workspaceFolder}/server/src/thirdParty/uv",
-                "${workspaceFolder}/server/src/thirdParty/apache"
+                "${workspaceFolder}/server/src/thirdParty/apache",
+                "C:/code/vcpkg/packages/json-c_x64-windows/include/json-c",
+                "C:/code/vcpkg/packages/json-c_x64-windows/include"
             ],
             "defines": [
                 "_DEBUG",

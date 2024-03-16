@@ -35,5 +35,29 @@ typedef int socklen_t;
 #define UV_MAX_QUEUE_NUM 128
 #define UV_DEFAULT_LISTEN_ADDR "127.0.0.1"
 
+#define AD_MSG_OBJ_JSON_MAX_KEY_BUFF 64
+#define AD_MSG_OBJ_JSON_MAX_VALUE_BUFF 256
+#define AD_MSG_OBJ_JSON_MAX_NUM 16
+
+typedef enum tag_AD_MSG_OBJ_OPCODE_E {
+    AD_MSG_OBJ_METHOD_GET,
+    AD_MSG_OBJ_METHOD_CREATE,
+    AD_MSG_OBJ_METHOD_UPDATE,
+    AD_MSG_OBJ_METHOD_DELETE,
+
+    AD_MSG_OBJ_METHOD_BUTT
+} AD_MSG_OBJ_OPCODE_E;
+
+typedef struct tag_AD_MSG_OBJ_JSON_S {
+    char jsonKeyBuf[AD_MSG_OBJ_JSON_MAX_KEY_BUFF];
+    char jsonValueBuf[AD_MSG_OBJ_JSON_MAX_VALUE_BUFF];
+} AD_MSG_OBJ_JSON_S;
+
+typedef struct tagAD_MSG_OBJ_S {
+    uint32_t objId;
+    uint32_t httpMethod;
+    AD_MSG_OBJ_JSON_S jsonObj[AD_MSG_OBJ_JSON_MAX_NUM];
+} AD_MSG_OBJ_S;
+
 int32_t AppDataInitSocket(void);
 int32_t AppDataStartSocket(void);
